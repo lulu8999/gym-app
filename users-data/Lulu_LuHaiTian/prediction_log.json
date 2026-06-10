@@ -1,0 +1,66 @@
+{
+  "predictions": [
+    {
+      "id": 0,
+      "timestamp": "2026-05-31 07:23:13",
+      "outlook": "震荡偏多",
+      "risk_level": "低-中",
+      "suggestion": "🟢 市场偏强，精选标的，分批建仓",
+      "hot_sectors": [
+        "白酒",
+        "电力",
+        "煤炭开采加工",
+        "零售",
+        "银行"
+      ],
+      "inflow_sectors": [
+        "银行",
+        "电力",
+        "白酒",
+        "化学制药",
+        "中药"
+      ],
+      "signals": [
+        "📉 大盘整体偏弱",
+        "🔥 领涨板块: 白酒 (🍺) 📈+3.5%",
+        "📰 新闻情绪: 略偏乐观",
+        "📊 宏观基本面偏乐观"
+      ],
+      "score": 0.5,
+      "verified": false,
+      "actual_market": null,
+      "accuracy": null
+    },
+    {
+      "id": 1,
+      "timestamp": "2026-05-31 07:23:41",
+      "outlook": "震荡",
+      "risk_level": "中",
+      "suggestion": "🟡 市场中性，控制仓位，长短搭配",
+      "hot_sectors": [
+        "白酒",
+        "电力",
+        "煤炭开采加工",
+        "零售",
+        "银行"
+      ],
+      "inflow_sectors": [
+        "银行",
+        "电力",
+        "白酒",
+        "化学制药",
+        "中药"
+      ],
+      "signals": [
+        "📉 大盘整体偏弱",
+        "🔥 领涨板块: 白酒 (🍺) 📈+3.5%",
+        "📊 宏观基本面偏乐观"
+      ],
+      "score": 0.0,
+      "verified": false,
+      "actual_market": null,
+      "accuracy": null
+    }
+  ],
+  "accuracy": {}
+}

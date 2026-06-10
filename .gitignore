@@ -1,0 +1,28 @@
+# 排除缓存和临时文件
+__pycache__
+.pycache
+.cache
+.node_modules
+
+# 排除日志和数据库
+*.log
+*.db
+*.db-shm
+*.db-wal
+
+# 排除备份
+*backup*
+*backups*
+
+# 排除系统文件
+.bash_history
+.viminfo
+.ssh/*.pem
+
+# 排除文档
+*.pdf
+*.docx
+
+# 排除嵌入式 git 仓库
+.claude/plugins/
+.hermes/hermes-agent/
