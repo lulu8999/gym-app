@@ -340,12 +340,6 @@ memory:
   provider: holographic
   user_char_limit: 1375
   user_profile_enabled: true
-model:
-  api_key: bce-v3/ALTAKSP-fSdvSJERdBjLe5foYZWeP/c358174e8c32c5edb956ef43e8529fefccd11aaf
-  api_key_env: ''
-  base_url: https://qianfan.baidubce.com/v2/coding
-  default: qianfan-code-latest
-  provider: custom
 model_catalog:
   enabled: true
   providers: {}
@@ -370,14 +364,6 @@ paste_collapse_threshold: 5
 paste_collapse_threshold_fallback: 5
 personalities: {}
 platforms:
-  wecom:
-    enabled: false
-    extra:
-      bot_id: aibyIv3U0ehs8X8V5XxzLvyYcW0oUdeOj-j
-      bot_secret: K3IhewwuBh5RwpkysODaTzD2iy1MMOEHJNWG9fMqL37
-      dm_policy: open
-      group_policy: disabled
-      secret: K3IhewwuBh5RwpkysODaTzD2iy1MMOEHJNWG9fMqL37
   wecom_callback:
     enabled: true
     extra:
@@ -400,11 +386,11 @@ prompt_caching:
   cache_ttl: 5m
 providers:
   qianfan:
-    api_key_env: QIANFAN_API_KEY
+    provider: custom
+    api_key: bce-v3/ALTAKSP-zDkxhEVDGbnCTVTJK65aG/156736788e02aae56787b2158c17dc774a06ae61
     base_url: https://qianfan.baidubce.com/v2/coding
     default_model: qianfan-code-latest
     models: '["qianfan-code-latest"]'
-    provider: custom
   xiaomi-mimo:
     api_key_env: XIAOMI_API_KEY
     base_url: https://api.xiaomimimo.com/v1
