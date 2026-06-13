@@ -24,12 +24,25 @@ import time
 
 
 def _get_deepseek_key() -> str:
-    """从 Claude Code settings.json 读取 DeepSeek API Key"""
+    """从 config.yaml 或 .env 读取 DeepSeek API Key"""
+    import os
+    # 优先从 config.yaml 的 providers.deepseek.api_key 读
     try:
-        with open("/root/.claude/settings.json") as f:
-            return json.load(f).get("apiKey", "")
+        import yaml
+        with open("/root/.hermes/config.yaml") as f:
+            cfg = yaml.safe_load(f)
+        key = (cfg or {}).get("providers", {}).get("deepseek", {}).get("api_key", "")
+        if key and not key.startswith("sk-..."):
+            return key
     except Exception:
-        return ""
+        pass
+    # 回退到 .env
+    try:
+        from dotenv import load_dotenv
+        load_dotenv("/root/.hermes/.env")
+    except Exception:
+        pass
+    return os.environ.get("DEEPSEEK_API_KEY", "")
 
 
 # ── LLM prompt for task decomposition ──────────────────────────────
