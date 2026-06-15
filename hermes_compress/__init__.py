@@ -299,6 +299,8 @@ class OutputCompressor:
         
         # 按文件分组
         file_groups = {}
+        plain_lines = []
+        
         for line in lines:
             if not line.strip():
                 continue
@@ -313,14 +315,25 @@ class OutputCompressor:
                 if file_name not in file_groups:
                     file_groups[file_name] = []
                 file_groups[file_name].append(f"{line_number}: {content[:80]}")
+            else:
+                plain_lines.append(line.strip()[:120])
         
-        # 构建输出
-        for file_name, matches in file_groups.items():
-            result.append(f"{file_name} ({len(matches)} matches):")
-            for match in matches[:3]:  # 只显示前3个匹配
-                result.append(f"  {match}")
-            if len(matches) > 3:
-                result.append(f"  ... and {len(matches) - 3} more")
+        # 如果有按文件分组的结果
+        if file_groups:
+            for file_name, matches in file_groups.items():
+                result.append(f"{file_name} ({len(matches)} matches):")
+                for match in matches[:3]:
+                    result.append(f"  {match}")
+                if len(matches) > 3:
+                    result.append(f"  ... and {len(matches) - 3} more")
+        elif plain_lines:
+            # 没有 file:line: 格式的纯行输出（单文件grep无-n时）
+            total = len(plain_lines)
+            result.append(f"{total} matches:")
+            for line in plain_lines[:5]:
+                result.append(f"  {line}")
+            if total > 5:
+                result.append(f"  ... and {total - 5} more")
         
         return '\n'.join(result)
     

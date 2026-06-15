@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""
+Hermes Compress Wrapper - 自动压缩命令输出
+用法: hcp <command> [args...]
+示例: hcp git status
+      hcp env
+      hcp grep -r "pattern" /path
+"""
+
+import sys
+import os
+import subprocess
+import argparse
+
+# 添加hermes_compress模块路径
+sys.path.insert(0, '/root')
+sys.path.insert(0, os.path.expanduser('~/.hermes/hermes-agent'))
+
+from hermes_compress import compress
+
+# 需要压缩的命令列表
+COMPRESS_COMMANDS = {
+    'git': ['status', 'diff', 'log', 'show', 'branch'],
+    'docker': ['ps', 'images', 'container', 'volume', 'network'],
+    'grep': [],
+    'find': [],
+    'ls': [],
+    'env': [],
+    'log': [],
+}
+
+def detect_cmd_type(cmd_args):
+    """根据命令参数检测命令类型"""
+    if not cmd_args:
+        return None
+    
+    cmd = cmd_args[0]
+    
+    if cmd == 'git' and len(cmd_args) > 1:
+        subcmd = cmd_args[1]
+        if subcmd in ['status', 'diff', 'log', 'show', 'branch']:
+            return f'git-{subcmd}'
+        return 'git'
+    
+    if cmd == 'docker' and len(cmd_args) > 1:
+        subcmd = cmd_args[1]
+        if subcmd == 'ps':
+            return 'docker'
+        elif subcmd == 'images':
+            return 'docker-images'
+        return 'docker'
+    
+    if cmd in ['grep', 'find', 'ls', 'env', 'log']:
+        return cmd
+    
+    return None
+
+def should_compress(cmd_args, force=False):
+    """判断是否需要压缩"""
+    if force:
+        return True
+    
+    if not cmd_args:
+        return False
+    
+    cmd = cmd_args[0]
+    
+    if cmd in COMPRESS_COMMANDS:
+        if not COMPRESS_COMMANDS[cmd]:
+            return True
+        if len(cmd_args) > 1 and cmd_args[1] in COMPRESS_COMMANDS[cmd]:
+            return True
+    
+    return False
+
+def run_command(cmd_args, compress_output=True, show_stats=False):
+    """执行命令并压缩输出"""
+    try:
+        result = subprocess.run(
+            cmd_args,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+    except FileNotFoundError:
+        print(f"错误: 命令 '{cmd_args[0]}' 不存在", file=sys.stderr)
+        return 1
+    except subprocess.TimeoutExpired:
+        print("错误: 命令执行超时", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"错误: {e}", file=sys.stderr)
+        return 1
+    
+    stdout = result.stdout
+    stderr = result.stderr
+    returncode = result.returncode
+    
+    if compress_output and stdout:
+        cmd_type = detect_cmd_type(cmd_args)
+        original_lines = len(stdout.split('\n'))
+        
+        compressed_stdout = compress(stdout, cmd_type=cmd_type)
+        
+        if show_stats:
+            compressed_lines = len(compressed_stdout.split('\n'))
+            reduction = (1 - compressed_lines / original_lines) * 100 if original_lines > 0 else 0
+            print(f"[压缩统计] {original_lines}行 → {compressed_lines}行 (压缩率{reduction:.1f}%)", file=sys.stderr)
+        
+        stdout = compressed_stdout
+    
+    if stdout:
+        print(stdout, end='')
+    if stderr:
+        print(stderr, end='', file=sys.stderr)
+    
+    return returncode
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Hermes Compress Wrapper - 自动压缩命令输出',
+        usage='hcp [选项] <命令> [参数...]'
+    )
+    parser.add_argument('--no-compress', '-n', action='store_true',
+                       help='不压缩输出')
+    parser.add_argument('--stats', '-s', action='store_true',
+                       help='显示压缩统计')
+    parser.add_argument('--force', '-f', action='store_true',
+                       help='强制压缩（即使命令不在列表中）')
+    parser.add_argument('--type', '-t',
+                       help='指定命令类型')
+    parser.add_argument('command', nargs=argparse.REMAINDER,
+                       help='要执行的命令')
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        print("\n示例:")
+        print("  hcp git status")
+        print("  hcp env")
+        print("  hcp grep -r 'pattern' /path")
+        print("  hcp --stats git diff")
+        print("  hcp --force ls -la")
+        return 1
+    
+    compress_output = not args.no_compress
+    if compress_output and not args.force:
+        compress_output = should_compress(args.command, args.force)
+    
+    return run_command(
+        args.command,
+        compress_output=compress_output,
+        show_stats=args.stats
+    )
+
+if __name__ == '__main__':
+    sys.exit(main())
