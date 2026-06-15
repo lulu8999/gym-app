@@ -164,31 +164,7 @@ def _inject_memory_reinforcement(route: dict, source: str = "") -> str:
 
 # ── L1/L2 框架注入文本 ──────────────────────────────────────────
 
-_L1_L2_FRAMEWORK = """## 🎯 L123 工作流框架（系统级）
-
-Lulu 的项目使用 L1+L2 两层工作流。你必须严格遵守以下规则，不可忽略。
-
-### L1 意图路由规则
-每条用户消息都必须先判断意图类型：
-- **simple** — 简单查询/操作，直接使用工具执行（查天气、看状态、显示等）
-- **creative** — 创作类任务，自己 + LLM 生成（写文章、翻译、总结、分析等）
-- **coding** — 编码任务，用 Claude Code 执行（写脚本、重构、加功能等）
-- **scraping** — 爬取/浏览器任务，用 OpenClaw / delegate_task 执行
-- **deployment** — 部署/配置任务，用 Claude Code 执行
-- **complex** — 复杂任务，必须走 L2 分步执行框架
-
-### L2 执行框架（仅 complex 任务）
-当任务被标为 complex 时，必须：
-1. 用 L2 Orchestrator 生成分步执行计划
-2. 每轮只执行一个步骤
-3. 完成后标记完成，取下一步
-4. 全部完成后调用 summarize() 生成汇总
-5. 定期汇报进度给用户
-
-### 重要规则
-- ⚡ 快速确认（"做吧"、"继续"、"开搞"）→ 用 session_search 找回上一条完整任务，重新走 L1+L2
-- 🔴 绝不伪造数据 — 如果执行失败，如实告知
-- ⏱ 长期任务定期汇报进度"""
+_L1_L2_FRAMEWORK = """遵循L123路由决策：simple直接干，creative自主创作，coding/部署给Claude Code，scraping给OpenClaw，complex走L2分步。"""
 
 
 # ── 钩子实现 ──────────────────────────────────────────────────
@@ -387,35 +363,24 @@ def _on_pre_llm_call(
         route_type = route.get("type", "simple")
         intent = route.get("intent", "simple")
 
-        # 注入上下文的框架指令 + 记忆回放
-        parts = [_L1_L2_FRAMEWORK]
-
-        # 当前消息的 L1 路由结果
-        route_summary = f"\n### 当前消息路由\n消息: {user_message[:80]}\n路由: {route_type}/{intent}"
+        # 注入简洁的路由标签（不输出给用户）
+        tag = f"[L123:{route_type}/{intent}]"
         if route_type == "complex":
-            subtasks = route.get("subtasks", [])
-            if subtasks:
-                route_summary += f"\n拆分 {route.get('count', 0)} 步:"
-                for st in subtasks:
-                    route_summary += f"\n  - [{st['intent']}] {st['task'][:40]} → {st['handler']}"
+            tag += f"({route.get('count',0)}步)"
         else:
-            handler = route.get("handler", "hermes")
-            route_summary += f"\n执行者: {handler}"
+            tag += f"→{route.get('handler','hermes')}"
 
-        parts.append(route_summary)
+        parts = [_L1_L2_FRAMEWORK, tag]
 
-        # 🔴 强制注入 L123 记忆回放（让模型始终感知 L1/L2 在工作）
-        parts.append(_inject_memory_reinforcement(route, source="llm_call"))
-
-        # L2 如果近期有活跃的 orchestrator 状态，也注入
+        # L2 活跃状态（仅 complex 任务，简短一行）
         try:
             orch = _get_orchestrator()
             if orch and not orch.is_complete() and orch._steps:
-                parts.append(f"\n### 活跃 L2 执行状态\n{orch.status()}")
+                parts.append(f"[L2活跃:{len([s for s in orch._steps if s.get('done')])}/{len(orch._steps)}步完成]")
         except Exception:
             pass
 
-        return "\n\n".join(parts)
+        return " ".join(parts)
 
     except Exception as exc:
         logger.warning("L1 pre_llm_call failed: %s", exc, exc_info=True)
