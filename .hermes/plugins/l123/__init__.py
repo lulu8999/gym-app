@@ -82,7 +82,7 @@ def _load_memory() -> list[dict]:
     if MEMORY_FILE.exists():
         try:
             return json.loads(MEMORY_FILE.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
+        except (json.JSONDecodeError, IOError, UnicodeDecodeError):
             return []
     return []
 
@@ -300,10 +300,16 @@ def _on_pre_gateway_dispatch(
     text = event.text.strip()
 
     # ── Slash 命令检测 ─────────────────────────────────────
-    # 所有 / 开头的命令直接放行给 Hermes，不走路由
+    # 所有 / 开头的命令走 _handle_slash_command() 处理，
+    # 不直接放行给 Hermes 原生（原生只支持 TUI/CLI，不支持微信/企微）
     if text.startswith("/"):
-        logger.info("Slash command: %s → passthrough to Hermes (no L1 route)", text.split()[0])
-        return None  # 不拦截，让 Hermes 原生处理
+        cmd = text.split()[0].lower()
+        result = _handle_slash_command(cmd, event=event, gateway=gateway, session_store=session_store)
+        if result:
+            return result  # rewrite or abort
+        # 未识别的 /xxx 命令 — passthrough 让 agent 自行处理
+        logger.info("Slash command: %s → unknown, passthrough", cmd)
+        return None
 
     if not text:
         return None
