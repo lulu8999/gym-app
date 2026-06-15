@@ -37,3 +37,6 @@
 - PM2 管理，会自动重启
 - API Key 在 /root/.claude-code-litellm/.env
 - 快捷命令：`claude-code-ds`
+- hcp 输出压缩已启用（`/root/hermes_compress/`），自动优化 token 消耗
+- 用法：`hcp git status`、`hcp env`、`hcp grep ...` 等
+- 自动识别命令类型，压缩率 60-99%
