@@ -2,12 +2,24 @@
 """
 Hermes Compress - RTK风格的输出压缩插件
 自动识别命令类型，压缩输出60-90%，保留关键信息
+
+用法：
+  # 命令行模式
+  git status | python hermes-compress.py
+  
+  # Python模块模式
+  from hermes_compress import compress
+  result = compress(git_status_output, cmd_type="git-status")
 """
 
 import sys
+import os
 import re
 import argparse
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+
+__version__ = "1.0.0"
+__all__ = ["compress", "OutputCompressor"]
 
 class OutputCompressor:
     """输出压缩引擎"""
@@ -17,8 +29,20 @@ class OutputCompressor:
         self.max_lines = max_lines
     
     def compress(self, text: str, cmd_type: str = None) -> str:
-        """压缩文本输出"""
-        if not text.strip():
+        """压缩文本输出
+        
+        Args:
+            text: 要压缩的文本
+            cmd_type: 命令类型，可选值：
+                - git-status, git-diff, git-log
+                - docker, docker-images
+                - grep, find, ls, env, log
+                - generic (默认，自动检测)
+        
+        Returns:
+            压缩后的文本
+        """
+        if not text or not text.strip():
             return text
         
         # 如果没有指定命令类型，自动检测
@@ -26,24 +50,21 @@ class OutputCompressor:
             cmd_type = self._detect_command_type(text)
         
         # 根据命令类型选择压缩策略
-        if cmd_type == "git-status":
-            return self._compress_git_status(text)
-        elif cmd_type == "git-diff":
-            return self._compress_git_diff(text)
-        elif cmd_type == "docker":
-            return self._compress_docker(text)
-        elif cmd_type == "grep":
-            return self._compress_grep(text)
-        elif cmd_type == "find":
-            return self._compress_find(text)
-        elif cmd_type == "ls":
-            return self._compress_ls(text)
-        elif cmd_type == "env":
-            return self._compress_env(text)
-        elif cmd_type == "log":
-            return self._compress_log(text)
-        else:
-            return self._compress_generic(text)
+        compressors = {
+            "git-status": self._compress_git_status,
+            "git-diff": self._compress_git_diff,
+            "git-log": self._compress_git_log,
+            "docker": self._compress_docker,
+            "docker-images": self._compress_docker_images,
+            "grep": self._compress_grep,
+            "find": self._compress_find,
+            "ls": self._compress_ls,
+            "env": self._compress_env,
+            "log": self._compress_log,
+        }
+        
+        compressor = compressors.get(cmd_type, self._compress_generic)
+        return compressor(text)
     
     def _detect_command_type(self, text: str) -> str:
         """自动检测命令类型"""
@@ -52,19 +73,27 @@ class OutputCompressor:
             return "git-status"
         
         # 检测git diff
-        if text.startswith("diff --git") or "@@" in text:
+        if text.startswith("diff --git") or ("@@" in text and "---" in text and "+++" in text):
             return "git-diff"
         
-        # 检测docker
-        if "CONTAINER ID" in text or "IMAGE" in text:
+        # 检测git log
+        if re.search(r'^[a-f0-9]{7,40}\s', text, re.MULTILINE):
+            return "git-log"
+        
+        # 检测docker ps
+        if "CONTAINER ID" in text and "IMAGE" in text:
             return "docker"
+        
+        # 检测docker images
+        if "REPOSITORY" in text and "TAG" in text and "IMAGE ID" in text:
+            return "docker-images"
         
         # 检测grep（文件:行号:内容模式）
         if re.search(r'^[^:]+:\d+:', text, re.MULTILINE):
             return "grep"
         
         # 检测find（路径模式）
-        if re.search(r'^\./', text, re.MULTILINE):
+        if re.search(r'^\./', text, re.MULTILINE) or re.search(r'^/', text, re.MULTILINE):
             return "find"
         
         # 检测ls（权限模式）
@@ -91,39 +120,54 @@ class OutputCompressor:
         unstaged_files = []
         untracked_files = []
         
+        in_staged = False
+        in_unstaged = False
+        in_untracked = False
+        
         for line in lines:
-            line = line.strip()
-            if not line:
+            stripped = line.strip()
+            if not stripped:
                 continue
             
             # 提取分支信息
-            if line.startswith("On branch"):
-                branch_info = line
+            if stripped.startswith("On branch"):
+                branch_info = stripped
                 continue
             
             # 提取ahead/behind信息
-            if "Your branch is" in line:
-                branch_info += " " + line
+            if "Your branch is" in stripped:
+                branch_info += " " + stripped
                 continue
             
-            # 提取staged文件
-            if line.startswith("new file:") or line.startswith("modified:"):
-                file_name = line.split(":")[-1].strip()
-                if "Changes to be committed" in text:
+            # 检测区域
+            if "Changes to be committed" in stripped:
+                in_staged = True
+                in_unstaged = False
+                in_untracked = False
+                continue
+            elif "Changes not staged for commit" in stripped:
+                in_staged = False
+                in_unstaged = True
+                in_untracked = False
+                continue
+            elif "Untracked files" in stripped:
+                in_staged = False
+                in_unstaged = False
+                in_untracked = True
+                continue
+            
+            # 提取文件
+            if stripped.startswith("new file:") or stripped.startswith("modified:") or stripped.startswith("deleted:"):
+                file_name = stripped.split(":")[-1].strip()
+                if in_staged:
                     staged_files.append(file_name)
-                else:
+                elif in_unstaged:
                     unstaged_files.append(file_name)
                 continue
             
-            # 提取unstaged文件
-            if line.startswith("modified:") or line.startswith("deleted:"):
-                file_name = line.split(":")[-1].strip()
-                unstaged_files.append(file_name)
-                continue
-            
             # 提取untracked文件
-            if line.startswith("??"):
-                file_name = line.split()[-1] if len(line.split()) > 1 else line[3:]
+            if in_untracked and not stripped.startswith("("):
+                file_name = stripped
                 untracked_files.append(file_name)
                 continue
         
@@ -156,12 +200,13 @@ class OutputCompressor:
         current_file = ""
         insertions = 0
         deletions = 0
+        files = []
         
         for line in lines:
             # 提取文件名
             if line.startswith("diff --git"):
                 if current_file:
-                    result.append(f"{current_file} | +{insertions} -{deletions}")
+                    files.append((current_file, insertions, deletions))
                 parts = line.split()
                 if len(parts) >= 4:
                     current_file = parts[3][2:]  # 去掉 b/ 前缀
@@ -177,45 +222,73 @@ class OutputCompressor:
         
         # 添加最后一个文件
         if current_file:
-            result.append(f"{current_file} | +{insertions} -{deletions}")
+            files.append((current_file, insertions, deletions))
         
-        # 添加统计
-        total_insertions = sum(int(r.split('+')[1].split(' ')[0]) for r in result if '|' in r)
-        total_deletions = sum(int(r.split('-')[-1]) for r in result if '|' in r)
-        result.insert(0, f"{len([r for r in result if '|' in r])} files changed, +{total_insertions} -{total_deletions}")
+        # 构建输出
+        if files:
+            total_insertions = sum(i for _, i, _ in files)
+            total_deletions = sum(d for _, _, d in files)
+            result.append(f"{len(files)} files changed, +{total_insertions} -{total_deletions}")
+            for file_name, ins, dels in files:
+                result.append(f"{file_name} | +{ins} -{dels}")
+        
+        return '\n'.join(result)
+    
+    def _compress_git_log(self, text: str) -> str:
+        """压缩git log输出"""
+        lines = text.split('\n')
+        result = []
+        
+        for line in lines[:20]:  # 只显示最近20条
+            if not line.strip():
+                continue
+            # 简化hash，只保留前7位
+            if re.match(r'^[a-f0-9]{40}', line):
+                line = line[:7] + line[40:]
+            result.append(line)
+        
+        if len(lines) > 20:
+            result.append(f"... {len(lines) - 20} more commits")
         
         return '\n'.join(result)
     
     def _compress_docker(self, text: str) -> str:
-        """压缩docker输出"""
+        """压缩docker ps输出"""
         lines = text.split('\n')
         result = []
         
-        # 如果是docker ps
-        if "CONTAINER ID" in text:
-            for line in lines[1:]:  # 跳过表头
-                if not line.strip():
-                    continue
-                parts = line.split()
-                if len(parts) >= 7:
-                    container_id = parts[0][:12]  # 短ID
-                    image = parts[1]
-                    status = parts[4]
-                    ports = parts[6] if len(parts) > 6 else ""
-                    name = parts[-1]
-                    result.append(f"{name} | {image} | {status} | {ports}")
+        # 跳过表头
+        data_lines = [l for l in lines if l.strip() and not l.startswith("CONTAINER ID")]
         
-        # 如果是docker images
-        elif "REPOSITORY" in text:
-            for line in lines[1:]:  # 跳过表头
-                if not line.strip():
-                    continue
-                parts = line.split()
-                if len(parts) >= 5:
-                    repo = parts[0]
-                    tag = parts[1]
-                    size = parts[-1]
-                    result.append(f"{repo}:{tag} | {size}")
+        if not data_lines:
+            return "No running containers"
+        
+        for line in data_lines:
+            parts = line.split()
+            if len(parts) >= 7:
+                container_id = parts[0][:12]  # 短ID
+                image = parts[1]
+                status = ' '.join(parts[4:6])  # Up X hours
+                name = parts[-1]
+                result.append(f"{name} | {image} | {status}")
+        
+        return '\n'.join(result)
+    
+    def _compress_docker_images(self, text: str) -> str:
+        """压缩docker images输出"""
+        lines = text.split('\n')
+        result = []
+        
+        # 跳过表头
+        data_lines = [l for l in lines if l.strip() and not l.startswith("REPOSITORY")]
+        
+        for line in data_lines:
+            parts = line.split()
+            if len(parts) >= 5:
+                repo = parts[0]
+                tag = parts[1]
+                size = parts[-1]
+                result.append(f"{repo}:{tag} | {size}")
         
         return '\n'.join(result)
     
@@ -226,6 +299,8 @@ class OutputCompressor:
         
         # 按文件分组
         file_groups = {}
+        plain_lines = []
+        
         for line in lines:
             if not line.strip():
                 continue
@@ -240,14 +315,25 @@ class OutputCompressor:
                 if file_name not in file_groups:
                     file_groups[file_name] = []
                 file_groups[file_name].append(f"{line_number}: {content[:80]}")
+            else:
+                plain_lines.append(line.strip()[:120])
         
-        # 构建输出
-        for file_name, matches in file_groups.items():
-            result.append(f"{file_name} ({len(matches)} matches):")
-            for match in matches[:3]:  # 只显示前3个匹配
-                result.append(f"  {match}")
-            if len(matches) > 3:
-                result.append(f"  ... and {len(matches) - 3} more")
+        # 如果有按文件分组的结果
+        if file_groups:
+            for file_name, matches in file_groups.items():
+                result.append(f"{file_name} ({len(matches)} matches):")
+                for match in matches[:3]:
+                    result.append(f"  {match}")
+                if len(matches) > 3:
+                    result.append(f"  ... and {len(matches) - 3} more")
+        elif plain_lines:
+            # 没有 file:line: 格式的纯行输出（单文件grep无-n时）
+            total = len(plain_lines)
+            result.append(f"{total} matches:")
+            for line in plain_lines[:5]:
+                result.append(f"  {line}")
+            if total > 5:
+                result.append(f"  ... and {total - 5} more")
         
         return '\n'.join(result)
     
@@ -372,8 +458,9 @@ class OutputCompressor:
         # 去重连续相同行
         prev_line = None
         duplicate_count = 0
+        duplicate_start = None
         
-        for line in lines:
+        for i, line in enumerate(lines):
             if not line.strip():
                 continue
             
@@ -418,25 +505,59 @@ class OutputCompressor:
         
         # 去掉重复空行
         prev_line = None
+        cleaned = []
         for line in result:
             if line.strip() == "" and prev_line == "":
                 continue
-            prev_line = line
+            cleaned.append(line)
+            prev_line = line.strip()
         
         # 限制行数
-        if len(result) > self.max_lines:
-            result = result[:self.max_lines] + [f"... {len(lines) - self.max_lines} more lines"]
+        if len(cleaned) > self.max_lines:
+            cleaned = cleaned[:self.max_lines] + [f"... {len(lines) - self.max_lines} more lines"]
         
-        return '\n'.join(result)
+        return '\n'.join(cleaned)
+
+# 便捷函数
+def compress(text: str, cmd_type: str = None, max_line_length: int = 200, max_lines: int = 500) -> str:
+    """压缩文本输出
+    
+    Args:
+        text: 要压缩的文本
+        cmd_type: 命令类型（git-status, git-diff, docker, grep, find, ls, env, log）
+        max_line_length: 最大行长度
+        max_lines: 最大行数
+    
+    Returns:
+        压缩后的文本
+    
+    Example:
+        >>> from hermes_compress import compress
+        >>> result = compress(git_status_output, cmd_type="git-status")
+    """
+    compressor = OutputCompressor(max_line_length, max_lines)
+    return compressor.compress(text, cmd_type)
 
 def main():
-    parser = argparse.ArgumentParser(description="Hermes Compress - RTK风格的输出压缩插件")
+    """命令行入口"""
+    parser = argparse.ArgumentParser(
+        description="Hermes Compress - RTK风格的输出压缩插件",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例：
+  git status | python hermes-compress.py
+  python hermes-compress.py --input /tmp/output.txt
+  python hermes-compress.py --type git-status --stats
+        """
+    )
     parser.add_argument("--input", "-i", help="输入文件路径")
     parser.add_argument("--type", "-t", help="命令类型", 
-                       choices=["git-status", "git-diff", "docker", "grep", "find", "ls", "env", "log", "generic"])
+                       choices=["git-status", "git-diff", "git-log", "docker", "docker-images", 
+                               "grep", "find", "ls", "env", "log", "generic"])
     parser.add_argument("--max-line-length", "-l", type=int, default=200, help="最大行长度")
     parser.add_argument("--max-lines", "-m", type=int, default=500, help="最大行数")
     parser.add_argument("--stats", "-s", action="store_true", help="显示压缩统计")
+    parser.add_argument("--version", "-v", action="version", version=f"%(prog)s {__version__}")
     
     args = parser.parse_args()
     
@@ -451,14 +572,12 @@ def main():
     else:
         # 从stdin读取
         if sys.stdin.isatty():
-            print("用法: echo 'content' | python hermes-compress.py", file=sys.stderr)
-            print("或: python hermes-compress.py --input /tmp/output.txt", file=sys.stderr)
+            parser.print_help()
             sys.exit(1)
         input_text = sys.stdin.read()
     
     # 压缩输出
-    compressor = OutputCompressor(args.max_line_length, args.max_lines)
-    compressed_text = compressor.compress(input_text, args.type)
+    compressed_text = compress(input_text, args.type, args.max_line_length, args.max_lines)
     
     # 输出结果
     print(compressed_text)
