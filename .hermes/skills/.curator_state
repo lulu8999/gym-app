@@ -1,0 +1,9 @@
+{
+  "last_report_path": "/root/.hermes/logs/curator/20260609-153739",
+  "last_run_at": "2026-06-09T15:37:39.388221+00:00",
+  "last_run_duration_seconds": 1188.66573,
+  "last_run_summary": "auto: no changes; llm: ## Consolidation Summary\n\nI've completed a consolidation pass on the Hermes skill library. Here's what was accomplished:\n\n### Clusters Processed:\n\n1. **custom-provider cluster (3 → 1)**: Consolidated `custom-model-provider-config` and `cust…\narchived 5 skill(s):\n  • custom-model-provider-config — pruned (stale)\n  • custom-provider-setup — pruned (stale)\n  • domain-routing — pruned (stale)\n  • expose-hermes-dashboard — pruned (stale)\n  • openclaw-browser-setup — pruned (stale)\nfull report: hermes curator status",
+  "last_run_summary_shown_at": "2026-06-02T14:40:21.003849+00:00",
+  "paused": false,
+  "run_count": 1
+}
