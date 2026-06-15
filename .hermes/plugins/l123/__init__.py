@@ -232,21 +232,25 @@ def _handle_slash_command(
         }
 
     if info.get("action") == "new_session":
-        # /new — 尝试新建会话
+        # /new — 正确重置会话
         try:
-            if gateway and hasattr(gateway, "start_new_session"):
+            if session_store is not None and event is not None:
+                from gateway.session import build_session_key
+                source = event.source
+                if source:
+                    sk = build_session_key(source)
+                    session_store.reset_session(sk)
+                    logger.info("Slash command: /new → session reset (key=%s)", sk)
+            elif gateway and hasattr(gateway, "start_new_session"):
                 gateway.start_new_session(event)
                 logger.info("Slash command: /new → new session started")
-            elif session_store and hasattr(session_store, "create"):
-                session_store.create()
-                logger.info("Slash command: /new → session store create")
             else:
                 logger.warning("Slash command: /new → no session method available")
         except Exception as exc:
             logger.warning("Slash command: /new → failed: %s", exc)
         return {
             "action": "rewrite",
-            "text": "[system:new_session] 已开始新会话",
+            "text": "[L1:simple] 已开始新会话，有什么想问的？",
         }
 
     # 普通命令：改写为自然语言
@@ -276,14 +280,16 @@ def _on_pre_gateway_dispatch(
     text = event.text.strip()
 
     # ── Slash 命令检测 ─────────────────────────────────────
-    # 所有 / 开头的命令走 _handle_slash_command() 处理，
-    # 不直接放行给 Hermes 原生（原生只支持 TUI/CLI，不支持微信/企微）
+    # 所有 / 开头的命令：网关原生支持的命令直接放行，不拦截
     if text.startswith("/"):
         cmd = text.split()[0].lower()
+
+        # 所有 slash 命令统一走 _handle_slash_command 处理
+        # 包括 /new、/reset 等网关原生支持的也由插件处理后再 passthrough
         result = _handle_slash_command(cmd, event=event, gateway=gateway, session_store=session_store)
         if result:
-            return result  # rewrite or abort
-        # 未识别的 /xxx 命令 — passthrough 让 agent 自行处理
+            return result
+        # 未识别的 /xxx 命令 — passthrough 给网关原生处理
         logger.info("Slash command: %s → unknown, passthrough", cmd)
         return None
 
