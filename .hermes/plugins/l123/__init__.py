@@ -280,12 +280,16 @@ def _on_pre_gateway_dispatch(
     text = event.text.strip()
 
     # ── Slash 命令检测 ─────────────────────────────────────
-    # 所有 / 开头的命令：网关原生支持的命令直接放行，不拦截
+    # /new 和 /reset 直接 passthrough 给网关原生 _handle_reset_command()
+    # 不做任何改写，否则 event.text 不再是 / 开头，网关无法识别为命令
     if text.startswith("/"):
         cmd = text.split()[0].lower()
 
-        # 所有 slash 命令统一走 _handle_slash_command 处理
-        # 包括 /new、/reset 等网关原生支持的也由插件处理后再 passthrough
+        if cmd in ("/new", "/reset"):
+            logger.info("Slash command: %s → passthrough to gateway native handler", cmd)
+            return None
+
+        # 其他 slash 命令走 _handle_slash_command 处理
         result = _handle_slash_command(cmd, event=event, gateway=gateway, session_store=session_store)
         if result:
             return result
