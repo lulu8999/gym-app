@@ -465,6 +465,24 @@ const router = {
           </div>
         </section>
         
+        <section class="rest-timer-section">
+          <div class="rest-timer-header">
+            <span>组间休息</span>
+            <div class="rest-timer-controls">
+              <button id="restTimerMinus" class="btn-rest-control">-</button>
+              <span id="restTimerValue">60</span>
+              <span>秒</span>
+              <button id="restTimerPlus" class="btn-rest-control">+</button>
+            </div>
+          </div>
+          <div class="rest-timer-display">
+            <span id="restTimer">00:00</span>
+            <button id="restTimerStart" class="btn-rest-start">
+              <i class="fas fa-play"></i> 开始休息
+            </button>
+          </div>
+        </section>
+        
         <section class="new-training">
           <div class="form-group">
             <label>训练类型</label>
@@ -564,6 +582,78 @@ const router = {
           pauseTimer();
         } else {
           startTimer();
+        }
+      });
+      
+      // 组间休息计时器
+      let restTimerInterval = null;
+      let restTimerSeconds = 60;
+      let restTimerRunning = false;
+      let restTimerValue = 60;
+      
+      const restTimerDisplay = document.getElementById('restTimer');
+      const restTimerStart = document.getElementById('restTimerStart');
+      const restTimerMinus = document.getElementById('restTimerMinus');
+      const restTimerPlus = document.getElementById('restTimerPlus');
+      const restTimerValueEl = document.getElementById('restTimerValue');
+      
+      function updateRestTimerDisplay() {
+        const minutes = Math.floor(restTimerSeconds / 60);
+        const seconds = restTimerSeconds % 60;
+        restTimerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+      
+      function startRestTimer() {
+        if (restTimerRunning) {
+          clearInterval(restTimerInterval);
+          restTimerRunning = false;
+          restTimerStart.innerHTML = '<i class="fas fa-play"></i> 开始休息';
+          return;
+        }
+        
+        restTimerSeconds = restTimerValue;
+        updateRestTimerDisplay();
+        restTimerRunning = true;
+        restTimerStart.innerHTML = '<i class="fas fa-pause"></i> 暂停';
+        
+        restTimerInterval = setInterval(() => {
+          restTimerSeconds--;
+          updateRestTimerDisplay();
+          
+          if (restTimerSeconds <= 0) {
+            clearInterval(restTimerInterval);
+            restTimerRunning = false;
+            restTimerStart.innerHTML = '<i class="fas fa-play"></i> 开始休息';
+            // 振动提醒
+            if (navigator.vibrate) {
+              navigator.vibrate(200);
+            }
+            utils.showToast('休息结束！', 'success');
+          }
+        }, 1000);
+      }
+      
+      restTimerStart?.addEventListener('click', startRestTimer);
+      
+      restTimerMinus?.addEventListener('click', () => {
+        if (restTimerValue > 10) {
+          restTimerValue -= 10;
+          restTimerValueEl.textContent = restTimerValue;
+          if (!restTimerRunning) {
+            restTimerSeconds = restTimerValue;
+            updateRestTimerDisplay();
+          }
+        }
+      });
+      
+      restTimerPlus?.addEventListener('click', () => {
+        if (restTimerValue < 300) {
+          restTimerValue += 10;
+          restTimerValueEl.textContent = restTimerValue;
+          if (!restTimerRunning) {
+            restTimerSeconds = restTimerValue;
+            updateRestTimerDisplay();
+          }
         }
       });
       
@@ -696,8 +786,8 @@ const router = {
                 <div class="exercise-grid">
                   ${grouped[category].map(ex => `
                     <div class="exercise-card" data-id="${ex.id}">
-                      <div class="exercise-icon">
-                        <i class="fas fa-dumbbell"></i>
+                      <div class="exercise-gif">
+                        ${ex.gif_url ? `<img src="${ex.gif_url}" alt="${ex.name}" loading="lazy">` : '<i class="fas fa-dumbbell"></i>'}
                       </div>
                       <div class="exercise-info">
                         <div class="exercise-name">${ex.name}</div>

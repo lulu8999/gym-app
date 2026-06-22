@@ -2,6 +2,7 @@
 /* 使用 design-tokens.css 中的设计系统变量 */
 
 /* ==================== 基础样式 ==================== */
+
 * {
   margin: 0;
   padding: 0;
@@ -9,13 +10,13 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-base);
+  font-family: var(--font-sans);
+  background-color: var(--bg-base);
   color: var(--text-high);
-  min-height: 100vh;
-  padding-bottom: 80px;
   line-height: var(--leading-normal);
-  font-size: var(--text-base);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ==================== 计时器 ==================== */
@@ -45,6 +46,100 @@ body {
 
 .timer-display i {
   font-size: var(--text-xl);
+}
+
+.btn-timer {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-high);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-timer:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+/* ==================== 组间休息计时器 ==================== */
+.rest-timer-section {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: var(--card-padding);
+  margin-bottom: var(--card-gap);
+  border: 1px solid var(--border);
+}
+
+.rest-timer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.rest-timer-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-rest-control {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-high);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: var(--text-lg);
+  transition: all var(--transition-fast);
+}
+
+.btn-rest-control:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.rest-timer-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.rest-timer-display span:first-child {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--accent);
+}
+
+.btn-rest-start {
+  background: var(--accent);
+  color: var(--bg-base);
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: all var(--transition-fast);
+}
+
+.btn-rest-start:hover {
+  background: var(--accent-light);
+  transform: translateY(-1px);
 }
 
 .btn-timer {
@@ -529,6 +624,78 @@ textarea.form-control {
 .exercise-selector {
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* ==================== 动作库页面 ==================== */
+.exercise-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all var(--transition-fast);
+}
+
+.exercise-card:hover {
+  border-color: var(--brand);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.exercise-gif {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  margin-bottom: var(--space-3);
+}
+
+.exercise-gif img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.exercise-gif i {
+  font-size: 2rem;
+  color: var(--text-low);
+}
+
+.exercise-info {
+  text-align: center;
+}
+
+.exercise-name {
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-1);
+}
+
+.exercise-muscle {
+  font-size: var(--text-xs);
+  color: var(--text-low);
+}
+
+.exercise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--card-gap);
+}
+
+.category-header {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.category-section {
+  margin-bottom: var(--space-8);
 }
 
 /* ==================== 人体图组件 ==================== */

@@ -409,6 +409,83 @@ app.get('/api/body', async (req, res) => {
   }
 });
 
+// 数据导出 API
+app.get('/api/export/trainings', async (req, res) => {
+  try {
+    const { format = 'csv', days = 30 } = req.query;
+    
+    // 获取训练记录
+    const [trainings] = await pool.query(
+      `SELECT t.*, 
+              COUNT(DISTINCT ts.exercise_id) as exercise_count,
+              COUNT(ts.id) as total_sets,
+              SUM(ts.weight * ts.reps) as total_volume
+       FROM trainings t
+       LEFT JOIN training_sets ts ON t.id = ts.training_id
+       WHERE t.start_time >= DATE_SUB(NOW(), INTERVAL ? DAY)
+       GROUP BY t.id
+       ORDER BY t.start_time DESC`,
+      [parseInt(days)]
+    );
+    
+    // 获取每组详情
+    const trainingIds = trainings.map(t => t.id);
+    let sets = [];
+    
+    if (trainingIds.length > 0) {
+      [sets] = await pool.query(
+        `SELECT ts.*, e.name as exercise_name, e.category
+         FROM training_sets ts
+         JOIN exercises e ON ts.exercise_id = e.id
+         WHERE ts.training_id IN (?)
+         ORDER BY ts.training_id, ts.exercise_id, ts.set_order`,
+        [trainingIds]
+      );
+    }
+    
+    // 按训练ID分组
+    const setsByTraining = {};
+    sets.forEach(s => {
+      if (!setsByTraining[s.training_id]) {
+        setsByTraining[s.training_id] = [];
+      }
+      setsByTraining[s.training_id].push(s);
+    });
+    
+    if (format === 'json') {
+      // JSON 格式
+      const data = trainings.map(t => ({
+        ...t,
+        sets: setsByTraining[t.id] || []
+      }));
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=trainings_${days}d.json`);
+      res.json(data);
+    } else {
+      // CSV 格式
+      let csv = '训练ID,训练类型,开始时间,结束时间,时长(分钟),动作数,总组数,总容量(kg)\n';
+      trainings.forEach(t => {
+        const duration = t.end_time ? 
+          Math.round((new Date(t.end_time) - new Date(t.start_time)) / 60000) : 0;
+        csv += `${t.id},${t.type || '未分类'},${t.start_time},${t.end_time || ''},${duration},${t.exercise_count},${t.total_sets},${t.total_volume || 0}\n`;
+      });
+      
+      csv += '\n详细记录:\n';
+      csv += '训练ID,动作名称,类别,组数,重量(kg),次数,RPE\n';
+      sets.forEach(s => {
+        csv += `${s.training_id},${s.exercise_name},${s.category},${s.set_order},${s.weight},${s.reps},${s.rpe || ''}\n`;
+      });
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=trainings_${days}d.csv`);
+      res.send('\uFEFF' + csv); // 添加 BOM 支持中文
+    }
+  } catch (error) {
+    console.error('Export trainings error:', error);
+    res.status(500).json({ error: '导出训练记录失败' });
+  }
+});
+
 // 前端路由支持（SPA）
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

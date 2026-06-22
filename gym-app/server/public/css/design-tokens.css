@@ -2,6 +2,11 @@
 /* 遵循：8pt Grid + shadcn/ui 风格 + 排版层级 */
 
 :root {
+  /* ========== 字体系统 ========== */
+  --font-sans: 'Inter', 'MiSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Inter', 'MiSans', sans-serif;
+
   /* ========== 8pt Grid 间距系统 ========== */
   --space-1: 4px;    /* 微间距 */
   --space-2: 8px;    /* xs */
