@@ -1,0 +1,107 @@
+/* ==================== 设计系统变量 (Design Tokens) ==================== */
+/* 遵循：8pt Grid + shadcn/ui 风格 + 排版层级 */
+
+:root {
+  /* ========== 8pt Grid 间距系统 ========== */
+  --space-1: 4px;    /* 微间距 */
+  --space-2: 8px;    /* xs */
+  --space-3: 12px;   /* sm */
+  --space-4: 16px;   /* md */
+  --space-5: 20px;   /* md+ */
+  --space-6: 24px;   /* lg - Card内边距 */
+  --space-8: 32px;   /* xl */
+  --space-10: 40px;  /* 2xl - 按钮/输入框高度 */
+  --space-12: 48px;  /* 3xl */
+
+  /* ========== 颜色系统：1品牌色 + 灰阶 ========== */
+  /* 暗夜科技风 */
+  --bg-base: #0F0F23;
+  --bg-card: #1A1A2E;
+  --bg-elevated: #16213E;
+  --bg-hover: #1E1E38;
+
+  --text-high: #FFFFFF;      /* 高对比：标题 */
+  --text-medium: #E0E0E0;    /* 中对比：正文 */
+  --text-low: #8B8BA3;       /* 低对比：辅助 */
+  --text-muted: #6B6B80;     /* 最低：禁用/占位 */
+
+  --brand: #FF6B35;          /* 品牌主色：活力橙 */
+  --brand-hover: #E55A2B;
+  --brand-light: rgba(255, 107, 53, 0.15);
+
+  --accent: #4ECDC4;         /* 辅助强调：科技青 */
+  --accent-light: rgba(78, 205, 196, 0.15);
+
+  --success: #10B981;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.2);
+
+  /* ========== 圆角：统一 10px ========== */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* ========== 阴影：只允许2层 ========== */
+  --shadow-default: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  /* ========== 排版层级 ========== */
+  /* 字号：12/14/16/20/24/32 */
+  --text-xs: 0.75rem;    /* 12px - 辅助 */
+  --text-sm: 0.875rem;   /* 14px - 正文小 */
+  --text-base: 1rem;     /* 16px - 正文 */
+  --text-lg: 1.25rem;    /* 20px - H3 */
+  --text-xl: 1.5rem;     /* 24px - H2 */
+  --text-2xl: 2rem;      /* 32px - H1 */
+
+  /* 行高：标题1.4 / 正文1.6 */
+  --leading-tight: 1.4;
+  --leading-normal: 1.6;
+
+  /* 字重 */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* ========== 间距快捷别名 ========== */
+  --spacing-xs: var(--space-2);   /* 8px */
+  --spacing-sm: var(--space-3);   /* 12px */
+  --spacing-md: var(--space-4);   /* 16px */
+  --spacing-lg: var(--space-6);   /* 24px */
+  --spacing-xl: var(--space-8);   /* 32px */
+
+  /* ========== 过渡 ========== */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+
+  /* ========== 布局 ========== */
+  --max-width: 1200px;
+  --content-width: 600px;
+  --padding-x: var(--space-6);    /* 24px */
+  --card-padding: var(--space-6); /* 24px */
+  --card-gap: var(--space-4);     /* 16px */
+}
+
+/* 亮色主题 */
+.light-theme {
+  --bg-base: #F5F5F5;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #F0F0F0;
+  --bg-hover: #F8F8F8;
+
+  --text-high: #1A1A2E;
+  --text-medium: #333333;
+  --text-low: #666666;
+  --text-muted: #999999;
+
+  --border: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.2);
+
+  --shadow-default: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+}

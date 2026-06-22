@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>训炼 - 你的训练伙伴</title>
+  <link rel="stylesheet" href="/css/design-tokens.css?v=1">
+  <link rel="stylesheet" href="/css/style.css?v=4">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/body-map.css?v=1">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0F0F23">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="header">
+    <div class="logo">
+      <i class="fas fa-dumbbell"></i>
+      <span>训炼</span>
+    </div>
+    <div class="header-right">
+      <button class="btn-icon" id="themeToggle">
+        <i class="fas fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主内容区域 -->
+  <main class="main-content" id="app">
+    <!-- 页面内容由 JavaScript 动态渲染 -->
+  </main>
+
+  <!-- 底部导航栏 -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item" data-page="home">
+      <i class="fas fa-home"></i>
+      <span>首页</span>
+    </a>
+    <a href="/training" class="nav-item" data-page="training">
+      <i class="fas fa-play-circle"></i>
+      <span>训练</span>
+    </a>
+    <a href="/exercises" class="nav-item" data-page="exercises">
+      <i class="fas fa-dumbbell"></i>
+      <span>动作</span>
+    </a>
+    <a href="/stats" class="nav-item" data-page="stats">
+      <i class="fas fa-chart-pie"></i>
+      <span>统计</span>
+    </a>
+    <a href="/profile" class="nav-item" data-page="profile">
+      <i class="fas fa-user"></i>
+      <span>我的</span>
+    </a>
+  </nav>
+
+  <!-- 模态框容器 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle"></h3>
+        <button class="modal-close" id="modalClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/body-map.js?v=1"></script>
+  <script src="/js/app.js?v=8"></script>
+</body>
+</html>
