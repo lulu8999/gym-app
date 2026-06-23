@@ -19,6 +19,17 @@ app.use(express.static(path.join(__dirname, 'public'), {
     res.set('Expires', '0');
   }
 }));
+// 额外静态文件目录（根级别 public）
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  maxAge: 0,
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+}));
 
 // 数据库连接池
 const pool = mysql.createPool({
@@ -315,6 +326,226 @@ app.get('/api/stats/weekly', async (req, res) => {
   }
 });
 
+// 总览统计
+app.get('/api/stats/overview', async (req, res) => {
+  try {
+    const { period = 30 } = req.query;
+    const days = parseInt(period);
+
+    const [result] = await pool.query(
+      `SELECT 
+         COUNT(DISTINCT t.id) as total_trainings,
+         COALESCE(SUM(t.duration), 0) as total_duration,
+         COALESCE(SUM(t.total_volume), 0) as total_volume,
+         COUNT(DISTINCT DATE(t.start_time)) as active_days
+       FROM trainings t
+       WHERE t.start_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+      [days]
+    );
+
+    // 计算连续训练天数
+    const [streakResult] = await pool.query(
+      `SELECT DISTINCT DATE(start_time) as train_date
+       FROM trainings
+       WHERE start_time >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+       ORDER BY train_date DESC`
+    );
+
+    let streakDays = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(today);
+
+    // 如果今天还没训练，从昨天开始算
+    const hasToday = streakResult.some(r => {
+      const d = new Date(r.train_date);
+      return d.toDateString() === today.toDateString();
+    });
+
+    if (!hasToday) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    const dateSet = new Set(streakResult.map(r => {
+      const d = new Date(r.train_date);
+      return d.toDateString();
+    }));
+
+    for (let i = 0; i < 90; i++) {
+      if (dateSet.has(checkDate.toDateString())) {
+        streakDays++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    res.json({
+      ...result[0],
+      streak_days: streakDays
+    });
+  } catch (error) {
+    console.error('Get overview error:', error);
+    res.status(500).json({ error: '获取总览统计失败' });
+  }
+});
+
+// 训练日历
+app.get('/api/stats/calendar', async (req, res) => {
+  try {
+    const { days = 90 } = req.query;
+    const limit = parseInt(days);
+
+    const [rows] = await pool.query(
+      `SELECT DATE(start_time) as date, COUNT(*) as count
+       FROM trainings
+       WHERE start_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY DATE(start_time)
+       ORDER BY date ASC`,
+      [limit]
+    );
+
+    res.json({ dates: rows });
+  } catch (error) {
+    console.error('Get calendar error:', error);
+    res.status(500).json({ error: '获取训练日历失败' });
+  }
+});
+
+// 训练频率趋势
+app.get('/api/stats/frequency', async (req, res) => {
+  try {
+    const { period = 30, granularity = 'day' } = req.query;
+    const days = parseInt(period);
+
+    let dateFormat, labelFormat;
+    if (granularity === 'week') {
+      dateFormat = '%Y-%u';  // year-week
+      labelFormat = 'DATE_FORMAT(DATE(start_time), "%Y年第%u周")';
+    } else {
+      dateFormat = '%Y-%m-%d';
+      labelFormat = "DATE_FORMAT(DATE(start_time), '%m/%d')";
+    }
+
+    const [rows] = await pool.query(
+      `SELECT ${labelFormat} as label, COUNT(*) as count, MIN(DATE(start_time)) as sort_date
+       FROM trainings
+       WHERE start_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY label
+       ORDER BY sort_date ASC`,
+      [days]
+    );
+
+    res.json({
+      labels: rows.map(r => r.label),
+      values: rows.map(r => r.count)
+    });
+  } catch (error) {
+    console.error('Get frequency error:', error);
+    res.status(500).json({ error: '获取训练频率失败' });
+  }
+});
+
+// 训练量趋势
+app.get('/api/stats/volume-trend', async (req, res) => {
+  try {
+    const { period = 30, granularity = 'day' } = req.query;
+    const days = parseInt(period);
+
+    let dateFormat, labelFormat;
+    if (granularity === 'week') {
+      labelFormat = "DATE_FORMAT(DATE(start_time), '%Y年第%u周')";
+    } else {
+      labelFormat = "DATE_FORMAT(DATE(start_time), '%m/%d')";
+    }
+
+    const [rows] = await pool.query(
+      `SELECT ${labelFormat} as label, 
+              COALESCE(SUM(total_volume), 0) as volume,
+              MIN(DATE(start_time)) as sort_date
+       FROM trainings
+       WHERE start_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY label
+       ORDER BY sort_date ASC`,
+      [days]
+    );
+
+    res.json({
+      labels: rows.map(r => r.label),
+      values: rows.map(r => Math.round(r.volume))
+    });
+  } catch (error) {
+    console.error('Get volume trend error:', error);
+    res.status(500).json({ error: '获取训练量趋势失败' });
+  }
+});
+
+// 部位统计
+app.get('/api/stats/body-parts', async (req, res) => {
+  try {
+    const { period = 30 } = req.query;
+    const days = parseInt(period);
+
+    // 部位映射：training_type -> muscle group
+    const [rows] = await pool.query(
+      `SELECT 
+         CASE 
+           WHEN t.training_type IN ('chest', '胸', 'chest_triceps', 'push') THEN '胸'
+           WHEN t.training_type IN ('back', '背', 'back_biceps', 'pull') THEN '背'
+           WHEN t.training_type IN ('leg', '腿', 'legs', 'lower') THEN '腿'
+           WHEN t.training_type IN ('shoulder', '肩', 'shoulders', 'shoulders_arms', 'upper') THEN '肩'
+           WHEN t.training_type IN ('arm', '手臂', 'arms') THEN '手臂'
+           WHEN t.training_type IN ('core', '核心', 'abs') THEN '核心'
+           ELSE '其他'
+         END as body_part,
+         COUNT(*) as count
+       FROM trainings t
+       WHERE t.start_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY body_part
+       HAVING body_part != '其他'
+       ORDER BY count DESC`,
+      [days]
+    );
+
+    // 确保所有部位都有（即使为0）
+    const allParts = ['胸', '背', '腿', '肩', '手臂', '核心'];
+    const countMap = {};
+    rows.forEach(r => { countMap[r.body_part] = r.count; });
+
+    const labels = allParts;
+    const values = allParts.map(p => countMap[p] || 0);
+
+    // 也统计训练组中的部位（更精确）
+    const [setRows] = await pool.query(
+      `SELECT e.category, COUNT(DISTINCT ts.training_id) as count
+       FROM training_sets ts
+       JOIN exercises e ON ts.exercise_id = e.id
+       JOIN trainings t ON ts.training_id = t.id
+       WHERE t.start_time >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         AND e.category IN ('胸', '背', '腿', '肩', '手臂', '核心')
+       GROUP BY e.category`,
+      [days]
+    );
+
+    // 如果训练组数据更丰富，优先使用
+    if (setRows.length > 0) {
+      const setMap = {};
+      setRows.forEach(r => { setMap[r.category] = r.count; });
+      // 合并两种数据源
+      allParts.forEach((p, i) => {
+        if (setMap[p]) {
+          values[i] = Math.max(values[i], setMap[p]);
+        }
+      });
+    }
+
+    res.json({ labels, values });
+  } catch (error) {
+    console.error('Get body parts error:', error);
+    res.status(500).json({ error: '获取部位统计失败' });
+  }
+});
+
 app.get('/api/stats/pr', async (req, res) => {
   try {
     const [prs] = await pool.query(
@@ -487,8 +718,21 @@ app.get('/api/export/trainings', async (req, res) => {
 });
 
 // 前端路由支持（SPA）
+// 显式路由映射
+app.get('/stats', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'stats.html'));
+});
+
+app.get('/body', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'body.html'));
+});
+
+app.get('/exercises', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'exercises.html'));
+});
+
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 // 启动服务器

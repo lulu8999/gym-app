@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>数据统计 - 训炼</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="logo">
+      <a href="/" class="back-btn"><img src="/icons/arrow-left.svg" width="20" height="20" class="icon" alt=""></a>
+      <span>数据统计</span>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- 总览统计卡片 -->
+    <section class="stats-section">
+      <h3>训练总览</h3>
+      <div class="stats-grid" id="overviewCards">
+        <div class="stat-card">
+          <div class="stat-icon"><img src="/icons/calendar-check.svg" width="24" height="24" class="icon" alt=""></div>
+          <div class="stat-value" id="totalTrainings">--</div>
+          <div class="stat-label">总训练次数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><img src="/icons/clock.svg" width="24" height="24" class="icon" alt=""></div>
+          <div class="stat-value" id="totalDuration">--</div>
+          <div class="stat-label">总时长</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><img src="/icons/scale.svg" width="24" height="24" class="icon" alt=""></div>
+          <div class="stat-value" id="totalVolume">--</div>
+          <div class="stat-label">总训练量</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><img src="/icons/flame.svg" width="24" height="24" class="icon" alt=""></div>
+          <div class="stat-value" id="streakDays">--</div>
+          <div class="stat-label">连续训练</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 时间范围切换 -->
+    <section class="period-section">
+      <div class="chart-tabs period-tabs">
+        <button class="tab-btn active" data-period="7">7天</button>
+        <button class="tab-btn" data-period="30">30天</button>
+        <button class="tab-btn" data-period="90">90天</button>
+        <button class="tab-btn" data-period="365">1年</button>
+      </div>
+    </section>
+
+    <!-- 训练日历热力图 -->
+    <section class="chart-section">
+      <div class="section-header">
+        <h3>训练日历</h3>
+        <span class="calendar-legend">
+          <span class="legend-dot low"></span>少
+          <span class="legend-dot mid"></span>中
+          <span class="legend-dot high"></span>多
+        </span>
+      </div>
+      <div class="calendar-grid" id="calendarGrid">
+        <div class="chart-empty" id="calendarEmpty">
+          <img src="/icons/calendar.svg" width="24" height="24" class="icon" alt="">
+          <p>还没有训练记录</p>
+          <p class="sub">开始训练后这里会显示热力图</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 训练频率趋势 -->
+    <section class="chart-section">
+      <div class="section-header">
+        <h3>训练频率趋势</h3>
+      </div>
+      <div class="chart-container">
+        <canvas id="frequencyChart"></canvas>
+        <div class="chart-empty" id="frequencyEmpty">
+          <img src="/icons/chart-line.svg" width="24" height="24" class="icon" alt="">
+          <p>还没有数据</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 训练量趋势 -->
+    <section class="chart-section">
+      <div class="section-header">
+        <h3>训练量趋势</h3>
+      </div>
+      <div class="chart-container">
+        <canvas id="volumeChart"></canvas>
+        <div class="chart-empty" id="volumeEmpty">
+          <img src="/icons/chart-bar.svg" width="24" height="24" class="icon" alt="">
+          <p>还没有数据</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 部位统计 -->
+    <section class="chart-section">
+      <div class="section-header">
+        <h3>部位分布</h3>
+      </div>
+      <div class="chart-container chart-bar-container">
+        <canvas id="bodyPartsChart"></canvas>
+        <div class="chart-empty" id="bodyPartsEmpty">
+          <img src="/icons/chart-pie.svg" width="24" height="24" class="icon" alt="">
+          <p>还没有数据</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 个人记录 -->
+    <section class="chart-section">
+      <div class="section-header">
+        <h3>个人记录 (PR)</h3>
+      </div>
+      <div class="pr-list" id="prList">
+        <div class="empty-state">
+          <img src="/icons/trophy.svg" width="32" height="32" class="icon" alt="">
+          <p>还没有个人记录</p>
+          <p class="sub">完成训练后将显示你的最佳成绩</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item"><img src="/icons/home.svg" width="20" height="20" class="icon" alt=""><span>首页</span></a>
+    <a href="/training" class="nav-item"><img src="/icons/player-play.svg" width="20" height="20" class="icon" alt=""><span>训练</span></a>
+    <a href="/exercises" class="nav-item"><img src="/icons/barbell.svg" width="20" height="20" class="icon" alt=""><span>动作</span></a>
+    <a href="/stats" class="nav-item active"><img src="/icons/chart-pie.svg" width="20" height="20" class="icon" alt=""><span>统计</span></a>
+    <a href="/profile" class="nav-item"><img src="/icons/user.svg" width="20" height="20" class="icon" alt=""><span>我的</span></a>
+  </nav>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/stats.js"></script>
+</body>
+</html>
